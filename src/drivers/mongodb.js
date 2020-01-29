@@ -1,12 +1,14 @@
-const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 const assert = require('assert');
 
-assert(process.env.DB_NAME, 'DB_NAME env var is required for this service.');
-assert(process.env.DB_HOST, 'DB_HOST env var is required for this service.');
+module.exports.init = () => {
+  assert(process.env.DB_HOST, 'DB_HOST env var is required for this service.');
+  assert(process.env.DB_NAME, 'DB_NAME env var is required for this service.');
 
-mongoose.connect(`${process.env.DB_HOST}/${process.env.DB_NAME}`, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+  return MongoClient.connect(process.env.DB_HOST).then(client => {
+    const db = client.db(process.env.DB_NAME);
 
-module.exports = mongoose.connection;
+    module.exports.db = db;
+    return db;
+  });
+};

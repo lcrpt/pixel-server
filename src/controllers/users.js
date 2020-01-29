@@ -1,10 +1,12 @@
-const UserModel = require('../models/user');
+const mongodb = require('../drivers/mongodb');
 
-const getUser = (req, res, next) => {
+const getUser = async (req, res, next) => {
+  await mongodb.init();
+
   const { username } = req.query;
 
-  return UserModel.findOne({ username }, (err, user) => {
-    if (err) return next(err);
+  try {
+    const user = await mongodb.db.collection('users').findOne({ username });
 
     if (!user) {
       return res.status(404).send({ message: `User ${username} not found` });
@@ -14,7 +16,9 @@ const getUser = (req, res, next) => {
       email: user.email,
       username: user.username,
     });
-  });
+  } catch (err) {
+    return next(err);
+  }
 };
 
 module.exports = {

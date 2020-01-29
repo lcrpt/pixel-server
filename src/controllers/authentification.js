@@ -1,8 +1,9 @@
 const _ = require('lodash');
 const jwt = require('jwt-simple');
 const passport = require('passport');
+const bcrypt = require('bcrypt-nodejs');
 
-const UserModel = require('../models/user');
+const mongodb = require('../drivers/mongodb');
 
 function getTokenForUser(user) {
   const payload = {
@@ -13,12 +14,13 @@ function getTokenForUser(user) {
   return jwt.encode(payload, process.env.SECRET);
 }
 
+const signUp = async (req, res, next) => {
+  await mongodb.init();
 
-const signUp = (req, res, next) => {
   const { email, username, password } = req.body;
 
-  return UserModel.findOne({ email }, (emailError, existingUser) => {
-    if (emailError) return next(emailError);
+  try {
+    const existingUser = await mongodb.db.collection('users').findOne({ email });
 
     if (existingUser) {
       return res.status(422).send({ message: 'Email already exist' });
@@ -28,17 +30,23 @@ const signUp = (req, res, next) => {
       return res.status(422).send({ message: 'Email or Password empty' });
     }
 
-    return UserModel.findOne({ username }, (usernameError, existingUsername) => {
-      if (usernameError) return next(usernameError);
+    const existingUsername = await mongodb.db.collection('users').findOne({ username });
 
-      if (existingUsername) {
-        return res.status(422).send({ message: 'Username already taken' });
-      }
+    if (existingUsername) {
+      return res.status(422).send({ message: 'Username already taken' });
+    }
 
-      const user = new UserModel({ email, username, password });
+    return bcrypt.genSalt(10, (err, salt) => {
+      if (err) return next(err);
 
-      return user.save(saveUserError => {
-        if (saveUserError) return next(saveUserError);
+      return bcrypt.hash(password, salt, null, async (error, hash) => {
+        if (error) return next(error);
+
+        const user = await mongodb.db.collection('users').insertOne({
+          email,
+          username,
+          password: hash,
+        });
 
         return res.json({
           token: getTokenForUser(user),
@@ -46,9 +54,10 @@ const signUp = (req, res, next) => {
         });
       });
     });
-  });
+  } catch (error) {
+    return next(error);
+  }
 };
-
 
 const signIn = (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) return next(err);
