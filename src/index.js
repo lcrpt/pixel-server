@@ -6,9 +6,6 @@ const http = require('http');
 const cors = require('cors');
 
 const router = require('./route');
-const db = require('./drivers/mongodb');
-
-db.on('error', console.error.bind(console, 'connection error:'));
 
 const app = express();
 app.use(morgan('combined'));
