@@ -1,0 +1,35 @@
+{
+  "name": "server-auth-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "assert": "^1.4.1",
+    "bcrypt-nodejs": "^0.0.3",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^5.0.1",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.20.0",
+    "express": "^4.17.1",
+    "growl": "^1.10.0",
+    "jwt-simple": "^0.5.6",
+    "lodash": "^4.17.15",
+    "mongodb": "^3.0.4",
+    "mongoose": "^5.8.9",
+    "morgan": "^1.9.1",
+    "passport": "^0.4.1",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0",
+    "uglify-js": "^2.6.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-as-promised": "^6.0.0",
+    "chai-spies": "^0.7.1",
+    "chai-subset": "^1.5.0",
+    "eslint": "^6.8.0",
+    "mocha": "^3.2.0",
+    "sinon": "^3.0.0"
+  }
+}
