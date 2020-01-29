@@ -7,7 +7,7 @@ const mongodb = require('../drivers/mongodb');
 
 function getTokenForUser(user) {
   const payload = {
-    sub: user.id,
+    sub: user._id,
     iat: new Date().getTime(),
   };
 

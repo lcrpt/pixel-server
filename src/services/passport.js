@@ -3,17 +3,20 @@ const { ExtractJwt } = require('passport-jwt');
 const JwtStrategy = require('passport-jwt').Strategy;
 const LocalStrategy = require('passport-local');
 const bcrypt = require('bcrypt-nodejs');
+const { ObjectId } = require('mongodb');
+
 const mongodb = require('../drivers/mongodb');
 
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromHeader('authorization'),
   secretOrKey: process.env.SECRET,
 };
+const localOptions = { usernameField: 'email' };
 
 const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
   await mongodb.init();
 
-  const userId = payload.sub;
+  const userId = new ObjectId(payload.sub);
 
   return mongodb.db.collection('users').findOne({ _id: userId }, (err, user) => {
     if (err) return done(err, false);
@@ -22,9 +25,6 @@ const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
     return done(null, false);
   });
 });
-
-const localOptions = { usernameField: 'email' };
-
 
 function isPasswordEqualTo(externalPassword, userPassword, done) {
   return bcrypt.compare(externalPassword, userPassword, (err, isMatch) => {
