@@ -42,11 +42,13 @@ const signUp = async (req, res, next) => {
       return bcrypt.hash(password, salt, null, async (error, hash) => {
         if (error) return next(error);
 
-        const user = await mongodb.db.collection('users').insertOne({
+        const { insertedId } = await mongodb.db.collection('users').insertOne({
           email,
           username,
           password: hash,
         });
+
+        const user = await mongodb.db.collection('users').findOne({ _id: insertedId });
 
         return res.json({
           token: getTokenForUser(user),
