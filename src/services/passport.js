@@ -11,7 +11,6 @@ const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromHeader('authorization'),
   secretOrKey: process.env.SECRET,
 };
-const localOptions = { usernameField: 'email' };
 
 const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
   await mongodb.init();
@@ -26,6 +25,7 @@ const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
   });
 });
 
+
 function isPasswordEqualTo(externalPassword, userPassword, done) {
   return bcrypt.compare(externalPassword, userPassword, (err, isMatch) => {
     if (err) return done(err);
@@ -33,14 +33,23 @@ function isPasswordEqualTo(externalPassword, userPassword, done) {
   });
 }
 
+const localOptions = { usernameField: 'signInId' };
+
 const localLoginStrategy = new LocalStrategy(localOptions, async (
-  email,
+  signInId,
   externalPassword,
   done,
 ) => {
   await mongodb.init();
 
-  return mongodb.db.collection('users').findOne({ email }, (err, user) => {
+  const query = {
+    $or: [
+      { email: signInId },
+      { username: signInId },
+    ],
+  };
+
+  return mongodb.db.collection('users').findOne(query, (err, user) => {
     if (err) return done(err);
     if (!user || !user.username) return done(null, false);
 
