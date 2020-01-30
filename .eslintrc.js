@@ -19,6 +19,7 @@ module.exports = {
     "no-param-reassign": [0],
     "no-plusplus": [0],
     "quotes": [2, "single"],
-    "vars-on-top": [0]
+    "vars-on-top": [0],
+    "no-underscore-dangle": ["error", { "allow": ["_id"] }]
   }
 };

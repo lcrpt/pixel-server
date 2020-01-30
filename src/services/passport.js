@@ -3,6 +3,8 @@ const { ExtractJwt } = require('passport-jwt');
 const JwtStrategy = require('passport-jwt').Strategy;
 const LocalStrategy = require('passport-local');
 const bcrypt = require('bcrypt-nodejs');
+const { ObjectId } = require('mongodb');
+
 const mongodb = require('../drivers/mongodb');
 
 const jwtOptions = {
@@ -13,7 +15,7 @@ const jwtOptions = {
 const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
   await mongodb.init();
 
-  const userId = payload.sub;
+  const userId = new ObjectId(payload.sub);
 
   return mongodb.db.collection('users').findOne({ _id: userId }, (err, user) => {
     if (err) return done(err, false);
@@ -23,8 +25,6 @@ const jwtCheckToken = new JwtStrategy(jwtOptions, async (payload, done) => {
   });
 });
 
-const localOptions = { usernameField: 'email' };
-
 
 function isPasswordEqualTo(externalPassword, userPassword, done) {
   return bcrypt.compare(externalPassword, userPassword, (err, isMatch) => {
@@ -33,14 +33,23 @@ function isPasswordEqualTo(externalPassword, userPassword, done) {
   });
 }
 
+const localOptions = { usernameField: 'signInId' };
+
 const localLoginStrategy = new LocalStrategy(localOptions, async (
-  email,
+  signInId,
   externalPassword,
   done,
 ) => {
   await mongodb.init();
 
-  return mongodb.db.collection('users').findOne({ email }, (err, user) => {
+  const query = {
+    $or: [
+      { email: signInId },
+      { username: signInId },
+    ],
+  };
+
+  return mongodb.db.collection('users').findOne(query, (err, user) => {
     if (err) return done(err);
     if (!user || !user.username) return done(null, false);
 
