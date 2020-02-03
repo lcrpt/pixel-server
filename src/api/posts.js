@@ -91,4 +91,25 @@ router.post('/', requireToken, async (req, res, next) => {
   }
 });
 
+
+router.delete('/:postId', async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const { postId } = req.params;
+
+    if (!postId) return res.status(500).send({ message: 'Internal server Error' });
+
+    const result = await mongodb.db.collection('posts').deleteOne({
+      _id: new ObjectId(postId),
+    });
+
+    assert.equal(1, result.deletedCount);
+
+    return res.json({ deletedPostId: postId });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = router;
