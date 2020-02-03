@@ -2,8 +2,10 @@ const _ = require('lodash');
 const jwt = require('jwt-simple');
 const passport = require('passport');
 const bcrypt = require('bcrypt-nodejs');
-
+const express = require('express');
 const mongodb = require('../drivers/mongodb');
+
+const router = express.Router();
 
 function getTokenForUser(user) {
   const payload = {
@@ -14,7 +16,7 @@ function getTokenForUser(user) {
   return jwt.encode(payload, process.env.SECRET);
 }
 
-const signUp = async (req, res, next) => {
+router.post('/signUp', async (req, res, next) => {
   await mongodb.init();
 
   const { email, username, password } = req.body;
@@ -59,9 +61,9 @@ const signUp = async (req, res, next) => {
   } catch (error) {
     return next(error);
   }
-};
+});
 
-const signIn = (req, res, next) => passport.authenticate('local', (err, user) => {
+router.post('/signIn', (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) return next(err);
 
   if (!user) {
@@ -72,9 +74,6 @@ const signIn = (req, res, next) => passport.authenticate('local', (err, user) =>
     token: getTokenForUser(user),
     username: user.username,
   });
-})(req, res, next);
+})(req, res, next));
 
-module.exports = {
-  signUp,
-  signIn,
-};
+module.exports = router;

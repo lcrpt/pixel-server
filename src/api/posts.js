@@ -1,8 +1,14 @@
 const assert = require('assert');
 const { ObjectId } = require('mongodb');
+const express = require('express');
+const passport = require('passport');
+
+const requireToken = passport.authenticate('jwt', { session: false });
 const mongodb = require('../drivers/mongodb');
 
-const getPost = async (req, res, next) => {
+const router = express.Router();
+
+router.get('/', async (req, res, next) => {
   try {
     await mongodb.init();
 
@@ -26,9 +32,9 @@ const getPost = async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-};
+});
 
-const createPost = async (req, res, next) => {
+router.post('/', requireToken, async (req, res, next) => {
   try {
     await mongodb.init();
 
@@ -73,9 +79,6 @@ const createPost = async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-};
+});
 
-module.exports = {
-  createPost,
-  getPost,
-};
+module.exports = router;

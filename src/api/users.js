@@ -1,6 +1,9 @@
+const express = require('express');
 const mongodb = require('../drivers/mongodb');
 
-const getUser = async (req, res, next) => {
+const router = express.Router();
+
+router.get('/', async (req, res, next) => {
   await mongodb.init();
 
   const { username } = req.query;
@@ -19,8 +22,6 @@ const getUser = async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-};
+});
 
-module.exports = {
-  getUser,
-};
+module.exports = router;
