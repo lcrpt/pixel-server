@@ -16,7 +16,13 @@ const getPost = async (req, res, next) => {
 
     if (!post) return res.status(404).send({ message: 'Post not found' });
 
-    return res.json(post);
+    return res.json({
+      postId: post._id,
+      title: post.title,
+      description: post.description,
+      location: post.location,
+      coverImage: post.coverImage,
+    });
   } catch (err) {
     return next(err);
   }
@@ -28,20 +34,25 @@ const createPost = async (req, res, next) => {
 
     const userId = req.user._id;
     const {
-      username,
       title,
       description,
       location,
-      coverImage,
+      imageId,
     } = req.body;
 
     if (!userId) return res.status(500).send({ message: 'Internal server Error' });
 
     const user = await mongodb.db.collection('users').findOne({
-      _id: userId,
+      _id: new ObjectId(userId),
     });
 
-    if (!user) return res.status(404).send({ message: `User ${username} not found` });
+    if (!user) return res.status(404).send({ message: 'User not found' });
+
+    const image = await mongodb.db.collection('images').findOne({
+      _id: new ObjectId(imageId),
+    });
+
+    if (!image) return res.status(404).send({ message: 'Cover image not found' });
 
     const post = {
       userId: user._id,
@@ -49,7 +60,8 @@ const createPost = async (req, res, next) => {
       title,
       description,
       location,
-      coverImage,
+      coverImage: image.path,
+      coverId: imageId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
