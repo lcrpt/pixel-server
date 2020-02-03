@@ -1,7 +1,14 @@
+require('../services/passport');
 const assert = require('assert');
+const express = require('express');
+const passport = require('passport');
 const mongodb = require('../drivers/mongodb');
+const upload = require('../services/image');
 
-const registerImage = async (req, res, next) => {
+const router = express.Router();
+const requireToken = passport.authenticate('jwt', { session: false });
+
+router.post('/', requireToken, upload.single('coverImage'), async (req, res, next) => {
   try {
     await mongodb.init();
 
@@ -21,8 +28,7 @@ const registerImage = async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-};
+});
 
-module.exports = {
-  registerImage,
-};
+
+module.exports = router;
