@@ -8,11 +8,26 @@ const mongodb = require('../drivers/mongodb');
 
 const router = express.Router();
 
+
 router.get('/', async (req, res, next) => {
   try {
     await mongodb.init();
+    const query = JSON.parse(req.query.query);
+    const options = JSON.parse(req.query.options);
+    const posts = await mongodb.db.collection('posts').find(query, options).toArray();
 
-    const { postId } = req.query;
+    return res.json(posts);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+
+router.get('/:postId', async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const { postId } = req.params;
 
     if (!postId) return res.status(500).send({ message: 'Internal server Error' });
 
@@ -22,17 +37,12 @@ router.get('/', async (req, res, next) => {
 
     if (!post) return res.status(404).send({ message: 'Post not found' });
 
-    return res.json({
-      postId: post._id,
-      title: post.title,
-      description: post.description,
-      location: post.location,
-      coverImage: post.coverImage,
-    });
+    return res.json(post);
   } catch (err) {
     return next(err);
   }
 });
+
 
 router.post('/', requireToken, async (req, res, next) => {
   try {
