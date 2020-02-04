@@ -14,7 +14,7 @@ router.get('/', async (req, res, next) => {
     await mongodb.init();
     const query = JSON.parse(req.query.query);
     const options = JSON.parse(req.query.options);
-    const posts = await mongodb.db.collection('posts').find(query, options).toArray();
+    const posts = await mongodb.db.collection('posts').find(query, options).sort({ createdAt: -1 }).toArray();
 
     return res.json(posts);
   } catch (err) {
@@ -86,6 +86,49 @@ router.post('/', requireToken, async (req, res, next) => {
     assert.equal(1, result.insertedCount);
 
     return res.json({ postId: result.insertedId });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+
+router.put('/:postId', requireToken, async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const { postId } = req.params;
+
+    const {
+      title,
+      description,
+      location,
+      imageId,
+    } = req.body;
+
+    const image = await mongodb.db.collection('images').findOne({
+      _id: new ObjectId(imageId),
+    });
+
+    if (!image) return res.status(404).send({ message: 'Cover image not found' });
+
+    const post = {
+      title,
+      description,
+      location,
+      coverImage: image.path,
+      coverId: imageId,
+      updatedAt: new Date(),
+    };
+
+    const result = await mongodb.db.collection('posts').updateOne(
+      { _id: new ObjectId(postId) },
+      { $set: post },
+    );
+
+    assert.equal(1, result.matchedCount);
+    assert.equal(1, result.modifiedCount);
+
+    return res.json({ postId });
   } catch (err) {
     return next(err);
   }
