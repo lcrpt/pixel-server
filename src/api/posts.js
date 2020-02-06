@@ -85,6 +85,7 @@ router.post('/', requireToken, async (req, res, next) => {
       location,
       coverImage: image.path,
       coverId: imageId,
+      comments: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -167,5 +168,45 @@ router.delete('/:postId', requireToken, async (req, res, next) => {
     return next(err);
   }
 });
+
+
+router.post('/comment/:postId', requireToken, async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const {
+      params: { postId },
+      user: { _id },
+      body: { message },
+    } = req;
+
+    const { username } = await mongodb.db.collection('users').findOne({
+      _id: new ObjectId(_id),
+    });
+
+    const comment = {
+      userId: _id,
+      username,
+      message,
+      createdAt: new Date(),
+    };
+
+    const { result: { nModified } } = await mongodb.db.collection('posts').update(
+      { _id: new ObjectId(postId) },
+      { $push: { comments: comment } },
+    );
+
+    assert.equal(1, nModified);
+
+    const post = await mongodb.db.collection('posts').findOne({
+      _id: new ObjectId(postId),
+    });
+
+    return res.json({ updatedPost: post });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 
 module.exports = router;
