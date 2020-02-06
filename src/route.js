@@ -10,4 +10,19 @@ module.exports = app => {
   app.use('/users', userRoutes);
   app.use('/posts', postRoutes);
   app.use('/images', imageRoute);
+
+  app.use((req, res, next) => {
+    const error = new Error('Not Found');
+    error.status = 404;
+    next(error);
+  });
+
+  app.use((error, req, res) => {
+    res.status(error.status || 500);
+    res.json({
+      error: {
+        message: error.message,
+      },
+    });
+  });
 };
