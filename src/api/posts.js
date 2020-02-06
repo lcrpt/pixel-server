@@ -8,6 +8,13 @@ const mongodb = require('../drivers/mongodb');
 
 const router = express.Router();
 
+async function isPostOwner(postId, reqUserId) {
+  const { userId } = await mongodb.db.collection('posts').findOne({
+    _id: new ObjectId(postId),
+  });
+
+  return String(userId) === String(reqUserId);
+}
 
 router.get('/', async (req, res, next) => {
   try {
@@ -97,6 +104,9 @@ router.put('/:postId', requireToken, async (req, res, next) => {
     await mongodb.init();
 
     const { postId } = req.params;
+    const postOwner = await isPostOwner(postId, req.user._id);
+
+    if (!postOwner) return res.status(404).send({ message: 'Trying to update the post of someone else' });
 
     const {
       title,
@@ -135,11 +145,14 @@ router.put('/:postId', requireToken, async (req, res, next) => {
 });
 
 
-router.delete('/:postId', async (req, res, next) => {
+router.delete('/:postId', requireToken, async (req, res, next) => {
   try {
     await mongodb.init();
 
     const { postId } = req.params;
+    const postOwner = await isPostOwner(postId, req.user._id);
+
+    if (!postOwner) return res.status(404).send({ message: 'Trying to update the post of someone else' });
 
     if (!postId) return res.status(500).send({ message: 'Internal server Error' });
 
