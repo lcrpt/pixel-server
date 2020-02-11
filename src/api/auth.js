@@ -48,6 +48,8 @@ router.post('/signUp', async (req, res, next) => {
           email,
           username,
           password: hash,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
 
         const user = await mongodb.db.collection('users').findOne({ _id: insertedId });
