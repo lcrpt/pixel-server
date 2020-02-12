@@ -16,14 +16,36 @@ async function isPostOwner(postId, reqUserId) {
   return String(userId) === String(reqUserId);
 }
 
+async function hydrateUser(userId) {
+  const {
+    username,
+    profileImage,
+  } = await mongodb.db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+  return { username, profileImage };
+}
+
 router.get('/', async (req, res, next) => {
   try {
     await mongodb.init();
+
     const query = JSON.parse(req.query.query);
+
+    if (query.userId) {
+      query.userId = new ObjectId(query.userId);
+    }
+
     const options = JSON.parse(req.query.options);
+
     const posts = await mongodb.db.collection('posts').find(query, options).sort({ createdAt: -1 }).toArray();
 
-    return res.json(posts);
+    const result = await Promise.all(posts.map(async post => {
+      post.user = await hydrateUser(post.userId);
+
+      return post;
+    }));
+
+    return res.json(result);
   } catch (err) {
     return next(err);
   }
@@ -43,6 +65,8 @@ router.get('/:postId', async (req, res, next) => {
     });
 
     if (!post) return res.status(404).send({ message: 'Post not found' });
+
+    post.user = await hydrateUser(post.userId);
 
     return res.json(post);
   } catch (err) {
@@ -79,7 +103,6 @@ router.post('/', requireToken, async (req, res, next) => {
 
     const post = {
       userId: user._id,
-      username: user.username,
       title,
       description,
       location,
@@ -201,6 +224,8 @@ router.post('/comment/:postId', requireToken, async (req, res, next) => {
     const post = await mongodb.db.collection('posts').findOne({
       _id: new ObjectId(postId),
     });
+
+    post.user = await hydrateUser(post.userId);
 
     return res.json({ updatedPost: post });
   } catch (err) {
