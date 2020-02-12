@@ -23,7 +23,18 @@ router.get('/', async (req, res, next) => {
     const options = JSON.parse(req.query.options);
     const posts = await mongodb.db.collection('posts').find(query, options).sort({ createdAt: -1 }).toArray();
 
-    return res.json(posts);
+    const result = await Promise.all(posts.map(async post => {
+      const {
+        username,
+        profileImage,
+      } = await mongodb.db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+
+      post.user = { username, profileImage };
+
+      return post;
+    }));
+
+    return res.json(result);
   } catch (err) {
     return next(err);
   }
@@ -43,6 +54,13 @@ router.get('/:postId', async (req, res, next) => {
     });
 
     if (!post) return res.status(404).send({ message: 'Post not found' });
+
+    const {
+      username,
+      profileImage,
+    } = await mongodb.db.collection('users').findOne({ _id: new ObjectId(post.userId) });
+
+    post.user = { username, profileImage };
 
     return res.json(post);
   } catch (err) {
@@ -79,7 +97,6 @@ router.post('/', requireToken, async (req, res, next) => {
 
     const post = {
       userId: user._id,
-      username: user.username,
       title,
       description,
       location,
