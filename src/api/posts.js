@@ -16,13 +16,17 @@ async function isPostOwner(postId, reqUserId) {
   return String(userId) === String(reqUserId);
 }
 
-async function hydrateUser(userId) {
+async function hydratePost(post) {
   const {
     username,
     profileImage,
-  } = await mongodb.db.collection('users').findOne({ _id: new ObjectId(userId) });
+  } = await mongodb.db.collection('users').findOne({ _id: new ObjectId(post.userId) });
 
-  return { username, profileImage };
+  post.user = { username, profileImage };
+  post.postId = post._id;
+  delete post._id;
+
+  return post;
 }
 
 router.get('/', async (req, res, next) => {
@@ -39,11 +43,7 @@ router.get('/', async (req, res, next) => {
 
     const posts = await mongodb.db.collection('posts').find(query, options).sort({ createdAt: -1 }).toArray();
 
-    const result = await Promise.all(posts.map(async post => {
-      post.user = await hydrateUser(post.userId);
-
-      return post;
-    }));
+    const result = await Promise.all(posts.map(async post => hydratePost(post)));
 
     return res.json(result);
   } catch (err) {
@@ -58,7 +58,7 @@ router.get('/:postId', async (req, res, next) => {
 
     const { postId } = req.params;
 
-    if (!postId) return res.status(500).send({ message: 'Internal server Error' });
+    if (!ObjectId.isValid(postId)) return res.status(400).send({ message: 'Bad Request' });
 
     const post = await mongodb.db.collection('posts').findOne({
       _id: new ObjectId(postId),
@@ -66,9 +66,9 @@ router.get('/:postId', async (req, res, next) => {
 
     if (!post) return res.status(404).send({ message: 'Post not found' });
 
-    post.user = await hydrateUser(post.userId);
+    const result = await hydratePost(post);
 
-    return res.json(post);
+    return res.json(result);
   } catch (err) {
     return next(err);
   }
@@ -225,9 +225,9 @@ router.post('/comment/:postId', requireToken, async (req, res, next) => {
       _id: new ObjectId(postId),
     });
 
-    post.user = await hydrateUser(post.userId);
+    const result = await hydratePost(post);
 
-    return res.json({ updatedPost: post });
+    return res.json({ updatedPost: result });
   } catch (err) {
     return next(err);
   }
