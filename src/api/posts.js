@@ -108,7 +108,10 @@ router.post('/', requireToken, async (req, res, next) => {
       location,
       coverImage: image.path,
       coverId: imageId,
+      commentCount: 0,
       comments: [],
+      likeCount: 0,
+      likes: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -216,7 +219,10 @@ router.post('/comment/:postId', requireToken, async (req, res, next) => {
 
     const { result: { nModified } } = await mongodb.db.collection('posts').update(
       { _id: new ObjectId(postId) },
-      { $push: { comments: comment } },
+      {
+        $inc: { commentCount: 1 },
+        $push: { comments: comment },
+      },
     );
 
     assert.equal(1, nModified);
@@ -228,6 +234,60 @@ router.post('/comment/:postId', requireToken, async (req, res, next) => {
     const result = await hydratePost(post);
 
     return res.json({ updatedPost: result });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+async function likeOrDislikePost(username, _id) {
+  try {
+    const result = await mongodb.db.collection('posts').updateOne(
+      {
+        _id,
+        likes: { $ne: username },
+      },
+      {
+        $inc: { likeCount: 1 },
+        $push: { likes: username },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      await mongodb.db.collection('posts').updateOne(
+        {
+          _id,
+          likes: username,
+        },
+        {
+          $inc: { likeCount: -1 },
+          $pull: { likes: username },
+        },
+      );
+    }
+
+    return true;
+  } catch (e) {
+    throw new Error(e);
+  }
+}
+
+router.put('/like/:postId', requireToken, async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const {
+      params: { postId },
+      user: { username },
+    } = req;
+    const _id = new ObjectId(postId);
+
+    await likeOrDislikePost(username, _id);
+
+    const post = await mongodb.db.collection('posts').findOne({ _id });
+
+    const result = await hydratePost(post);
+
+    return res.json({ likedPost: result });
   } catch (err) {
     return next(err);
   }
