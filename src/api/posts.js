@@ -116,10 +116,18 @@ router.post('/', requireToken, async (req, res, next) => {
       updatedAt: new Date(),
     };
 
-    const result = await mongodb.db.collection('posts').insertOne(post);
-    assert.equal(1, result.insertedCount);
+    const { insertedCount, insertedId } = await mongodb.db.collection('posts').insertOne(post);
+    assert.equal(1, insertedCount);
 
-    return res.json({ postId: result.insertedId });
+    await mongodb.db.collection('users').updateOne(
+      { _id: new ObjectId(post.userId) },
+      { $inc: { postsCount: 1 } },
+    );
+
+    const createdPost = await mongodb.db.collection('posts').findOne({ _id: insertedId });
+    const result = await hydratePost(createdPost);
+
+    return res.json({ createdPost: result });
   } catch (err) {
     return next(err);
   }
@@ -131,6 +139,9 @@ router.put('/:postId', requireToken, async (req, res, next) => {
     await mongodb.init();
 
     const { postId } = req.params;
+
+    if (!ObjectId.isValid(postId)) return res.status(400).send({ message: 'Bad Request' });
+
     const postOwner = await isPostOwner(postId, req.user._id);
 
     if (!postOwner) return res.status(404).send({ message: 'Trying to update the post of someone else' });
@@ -148,6 +159,7 @@ router.put('/:postId', requireToken, async (req, res, next) => {
 
     if (!image) return res.status(404).send({ message: 'Cover image not found' });
 
+    const query = { _id: new ObjectId(postId) };
     const post = {
       title,
       description,
@@ -157,15 +169,18 @@ router.put('/:postId', requireToken, async (req, res, next) => {
       updatedAt: new Date(),
     };
 
-    const result = await mongodb.db.collection('posts').updateOne(
-      { _id: new ObjectId(postId) },
+    const { matchedCount, modifiedCount } = await mongodb.db.collection('posts').updateOne(
+      query,
       { $set: post },
     );
 
-    assert.equal(1, result.matchedCount);
-    assert.equal(1, result.modifiedCount);
+    assert.equal(1, matchedCount);
+    assert.equal(1, modifiedCount);
 
-    return res.json({ postId });
+    const updatedPost = await mongodb.db.collection('posts').findOne(query);
+    const result = await hydratePost(updatedPost);
+
+    return res.json({ updatedPost: result });
   } catch (err) {
     return next(err);
   }
@@ -177,17 +192,23 @@ router.delete('/:postId', requireToken, async (req, res, next) => {
     await mongodb.init();
 
     const { postId } = req.params;
-    const postOwner = await isPostOwner(postId, req.user._id);
+    const userId = new ObjectId(req.user._id);
+    const postOwner = await isPostOwner(postId, userId);
 
     if (!postOwner) return res.status(404).send({ message: 'Trying to update the post of someone else' });
 
-    if (!postId) return res.status(500).send({ message: 'Internal server Error' });
+    if (!ObjectId.isValid(postId)) return res.status(400).send({ message: 'Bad Request' });
 
     const result = await mongodb.db.collection('posts').deleteOne({
       _id: new ObjectId(postId),
     });
 
     assert.equal(1, result.deletedCount);
+
+    await mongodb.db.collection('users').updateOne(
+      { _id: userId },
+      { $inc: { postsCount: -1 } },
+    );
 
     return res.json({ deletedPostId: postId });
   } catch (err) {
@@ -284,7 +305,6 @@ router.put('/like/:postId', requireToken, async (req, res, next) => {
     await likeOrDislikePost(username, _id);
 
     const post = await mongodb.db.collection('posts').findOne({ _id });
-
     const result = await hydratePost(post);
 
     return res.json({ likedPost: result });

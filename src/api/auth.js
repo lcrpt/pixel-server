@@ -48,6 +48,11 @@ router.post('/signUp', async (req, res, next) => {
           email,
           username,
           password: hash,
+          postsCount: 0,
+          followersCount: 0,
+          followers: [],
+          followingCount: 0,
+          following: [],
           createdAt: new Date(),
           updatedAt: new Date(),
         });
