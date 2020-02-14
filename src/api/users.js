@@ -95,4 +95,101 @@ router.put('/:userId', requireToken, async (req, res, next) => {
   }
 });
 
+
+async function followOrUnfollowUser(currentUser, followingUser) {
+  try {
+    // current user follow or unfollow a user
+    const result = await mongodb.db.collection('users').updateOne(
+      {
+        _id: currentUser._id,
+        following: { $ne: followingUser.username },
+      },
+      {
+        $inc: { followingCount: 1 },
+        $push: { following: followingUser.username },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      await mongodb.db.collection('users').updateOne(
+        {
+          _id: currentUser._id,
+          following: followingUser.username,
+        },
+        {
+          $inc: { followingCount: -1 },
+          $pull: { following: followingUser.username },
+        },
+      );
+    }
+
+    return true;
+  } catch (e) {
+    throw new Error(e);
+  }
+}
+
+async function userFollowers(currentUser, followingUser) {
+  try {
+    // user just been followed
+    const result = await mongodb.db.collection('users').updateOne(
+      {
+        _id: followingUser._id,
+        followers: { $ne: currentUser.username },
+      },
+      {
+        $inc: { followersCount: 1 },
+        $push: { followers: currentUser.username },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      await mongodb.db.collection('users').updateOne(
+        {
+          _id: followingUser._id,
+          followers: currentUser.username,
+        },
+        {
+          $inc: { followersCount: -1 },
+          $pull: { followers: currentUser.username },
+        },
+      );
+    }
+
+    return true;
+  } catch (e) {
+    throw new Error(e);
+  }
+}
+
+router.put('/follow/:userId', requireToken, async (req, res, next) => {
+  try {
+    await mongodb.init();
+
+    const {
+      params: { userId },
+      user: { username },
+    } = req;
+
+    if (!ObjectId.isValid(userId)) return res.status(400).send({ message: 'Bad Request' });
+
+    const currentUser = await mongodb.db.collection('users').findOne({ username });
+    const followingUser = await mongodb.db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    if (currentUser.username === followingUser.username) return res.status(400).send({ message: 'You can not follow yourself' });
+
+    await followOrUnfollowUser(currentUser, followingUser);
+    await userFollowers(currentUser, followingUser);
+
+    const followedUser = await mongodb.db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    return res.json({
+      followedUser: hydrateUser(followedUser),
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+
 module.exports = router;
