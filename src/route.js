@@ -4,12 +4,14 @@ const authRoutes = require('./api/auth');
 const userRoutes = require('./api/users');
 const postRoutes = require('./api/posts');
 const imageRoute = require('./api/images');
+const searchRoute = require('./api/search');
 
 module.exports = app => {
   app.use('/auth', authRoutes);
   app.use('/users', userRoutes);
   app.use('/posts', postRoutes);
   app.use('/images', imageRoute);
+  app.use('/search', searchRoute);
 
   app.use((req, res, next) => {
     const error = new Error('Not Found');
