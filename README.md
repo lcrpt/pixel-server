@@ -1,9 +1,6 @@
-## Authentification Express server
-Minimal Authentification server to use as a boilerplate
+## Pixel server
+Pixel server is a personnal project realized to test new features and libraries
 
-### Features:
-- SignIn
-- SignUp
-- SignOut
+PS: development is still in progress
 
-Working with https://github.com/leolassence/react-auth-app
+Working with https://github.com/leolassence/pixel-app
